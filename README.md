@@ -1,4 +1,4 @@
-# TrustLens AI - Multimodal Digital Trust & Evidence Verification
+# Legit.AI - Multimodal Digital Trust & Evidence Verification
 
 **Phase 2-4 added: live analysis. Evidence now comes from what the user submits, not from fixtures.**
 
