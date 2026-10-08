@@ -47,7 +47,11 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => {
-    const handlePopState = () => setPage(pageFromPath(window.location.pathname))
+    const handlePopState = () => {
+      setPage(pageFromPath(window.location.pathname))
+      setResult(null)
+      setActiveDemo(null)
+    }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
   }, [])
@@ -68,6 +72,8 @@ export default function Dashboard() {
     event.preventDefault()
     if (window.location.pathname !== path) window.history.pushState(null, '', path)
     setPage(pageFromPath(path))
+    setResult(null)
+    setActiveDemo(null)
     setMessage(null)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
