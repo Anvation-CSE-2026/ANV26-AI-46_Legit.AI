@@ -16,7 +16,7 @@ from services import scoring_engine as se
 from services.evidence_engine import (SOURCE_TYPES, contradiction_panel, count_by_class,
                                       enrich_evidence)
 
-DISCLAIMER = ("TrustLens estimates risk from the evidence it can find. It does not prove that content "
+DISCLAIMER = ("Legit.AI estimates risk from the evidence it can find. It does not prove that content "
               "is real or fake, and manipulation indicators are signals, not proof.")
 
 
