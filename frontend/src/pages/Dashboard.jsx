@@ -15,10 +15,12 @@ import ScoreBreakdown from '../components/ScoreBreakdown.jsx'
 import Conclusion from '../components/Conclusion.jsx'
 import Explore from './Explore.jsx'
 import Home from './Home.jsx'
-import { analyze, getDemos, getHealth, runDemo } from '../services/api.js'
+import { analyze, getCase, getCases, getDemos, getHealth, runDemo } from '../services/api.js'
+import History from './History.jsx'
 
 function pageFromPath(path) {
   if (path === '/explore') return 'explore'
+  if (path === '/history') return 'history'
   if (path === '/images' || path === '/photos' || path === '/image') return 'image'
   if (path === '/video') return 'video'
   if (path === '/audio') return 'audio'
@@ -30,6 +32,9 @@ export default function Dashboard() {
   const [page, setPage] = useState(() => pageFromPath(window.location.pathname))
   const [health, setHealth] = useState(null)
   const [demos, setDemos] = useState([])
+  const [cases, setCases] = useState([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [openingCaseId, setOpeningCaseId] = useState(null)
   const [result, setResult] = useState(null)
   const [activeDemo, setActiveDemo] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -47,6 +52,17 @@ export default function Dashboard() {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [])
 
+  useEffect(() => {
+    if (page !== 'history') return undefined
+    let active = true
+    setHistoryLoading(true)
+    getCases()
+      .then((items) => { if (active) setCases(items) })
+      .catch((e) => { if (active) setMessage({ kind: 'error', text: e.message }) })
+      .finally(() => { if (active) setHistoryLoading(false) })
+    return () => { active = false }
+  }, [page])
+
   const navigate = (event, path) => {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
     event.preventDefault()
@@ -58,7 +74,20 @@ export default function Dashboard() {
 
   const showResult = (data) => {
     setResult(data)
+    getCases().then(setCases).catch((e) => setMessage({ kind: 'error', text: e.message }))
     window.setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+  }
+
+  const handleOpenCase = async (caseId) => {
+    setOpeningCaseId(caseId)
+    setMessage(null)
+    try {
+      showResult(await getCase(caseId))
+    } catch (e) {
+      setMessage({ kind: 'error', text: e.message })
+    } finally {
+      setOpeningCaseId(null)
+    }
   }
 
   const handleDemo = async (id) => {
@@ -97,7 +126,9 @@ export default function Dashboard() {
           ? <Home demos={demos} loading={loading} activeDemo={activeDemo} onDemo={handleDemo} onNavigate={navigate} />
           : page === 'explore'
             ? <Explore onNavigate={navigate} />
-            : <InputPanel pageType={page} loading={loading} onAnalyze={handleAnalyze} />}
+            : page === 'history'
+              ? <History cases={cases} loading={historyLoading} openingCaseId={openingCaseId} onOpen={handleOpenCase} onNavigate={navigate} />
+              : <InputPanel pageType={page} loading={loading} onAnalyze={handleAnalyze} />}
 
         {message && (
           <div role="alert" className={`notice ${message.kind === 'error' ? 'notice-error' : 'notice-info'}`}>

@@ -1,9 +1,11 @@
 """Run with:  pytest -q   (from the backend folder)"""
+from uuid import uuid4
+
 from fastapi.testclient import TestClient
 
 from main import app
 
-client = TestClient(app)
+client = TestClient(app, headers={"X-Session-ID": str(uuid4())})
 
 
 def get(demo_id):
@@ -59,6 +61,26 @@ def test_opinions_are_not_verified():
 def test_case_is_stored_and_retrievable():
     cid = get("demo1")["case_id"]
     assert client.get(f"/api/case/{cid}").json()["case_id"] == cid
+
+
+def test_case_history_is_scoped_to_the_browser_session():
+    session_a, session_b = str(uuid4()), str(uuid4())
+    case = client.get("/api/demo/demo1", headers={"X-Session-ID": session_a}).json()
+
+    history_a = client.get("/api/cases", headers={"X-Session-ID": session_a})
+    history_b = client.get("/api/cases", headers={"X-Session-ID": session_b})
+    other_session_case = client.get(
+        f"/api/case/{case['case_id']}", headers={"X-Session-ID": session_b}
+    )
+
+    assert case["case_id"] in {item["case_id"] for item in history_a.json()}
+    assert case["case_id"] not in {item["case_id"] for item in history_b.json()}
+    assert other_session_case.status_code == 404
+
+
+def test_case_history_requires_a_session_id():
+    response = client.get("/api/cases", headers={"X-Session-ID": ""})
+    assert response.status_code == 422
 
 
 def test_no_evidence_is_inconclusive():

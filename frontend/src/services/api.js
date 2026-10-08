@@ -1,6 +1,16 @@
 // All backend calls live here. The frontend never sees any API key:
 // Gemini and Tavily keys stay in backend/.env.
 const BASE = import.meta.env.VITE_API_URL || '/api'
+const SESSION_KEY = 'legit-ai-session-id'
+
+function getSessionId() {
+  let sessionId = window.sessionStorage.getItem(SESSION_KEY)
+  if (!sessionId) {
+    sessionId = window.crypto.randomUUID()
+    window.sessionStorage.setItem(SESSION_KEY, sessionId)
+  }
+  return sessionId
+}
 
 export class ApiError extends Error {
   constructor(message, status, body) {
@@ -13,9 +23,11 @@ export class ApiError extends Error {
 async function request(path, options) {
   let res
   try {
-    res = await fetch(`${BASE}${path}`, options)
+    const headers = new Headers(options?.headers)
+    headers.set('X-Session-ID', getSessionId())
+    res = await fetch(`${BASE}${path}`, { ...options, headers })
   } catch {
-    throw new ApiError('Cannot reach the backend. Start it with: uvicorn main:app --port 8000', 0, null)
+    throw new ApiError('Unable to access this browser session or reach the backend. Check browser storage and start the backend with: uvicorn main:app --port 8000', 0, null)
   }
   const body = await res.json().catch(() => null)
   if (!res.ok) throw new ApiError(body?.message || `Request failed (${res.status})`, res.status, body)
@@ -24,6 +36,8 @@ async function request(path, options) {
 
 export const getHealth = () => request('/health')
 export const getDemos = () => request('/demo')
+export const getCases = () => request('/cases')
+export const getCase = (id) => request(`/case/${encodeURIComponent(id)}`)
 export const runDemo = (id) => request(`/demo/${id}`)
 
 // Every live analysis is a multipart form so the same code path handles text, documents,

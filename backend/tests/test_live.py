@@ -3,6 +3,7 @@
 The point: evidence is derived from what the USER submits, and changing the input changes the verdict.
 """
 import io
+from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -12,7 +13,7 @@ from services import gemini_service as gem
 from services import fallback_search as wiki
 from services import tavily_service as tav
 
-client = TestClient(app)
+client = TestClient(app, headers={"X-Session-ID": str(uuid4())})
 CLAIM = "The Riverside Bridge opened to traffic on 4 May 2021."
 
 

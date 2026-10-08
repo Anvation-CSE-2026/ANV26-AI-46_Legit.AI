@@ -6,10 +6,11 @@ Docs: http://localhost:8000/docs
 import os
 import shutil
 from pathlib import Path
-from typing import List, Optional
+from typing import Annotated, List, Optional
+from uuid import UUID
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import FastAPI, File, Form, Header, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -26,6 +27,7 @@ from services import fallback_search, gemini_service, live_pipeline as live, med
 from services.pipeline import build_case  # noqa: E402
 
 app = FastAPI(title="TrustLens AI", version="0.2.0")
+SessionId = Annotated[UUID, Header(alias="X-Session-ID")]
 
 
 @app.middleware("http")
@@ -95,27 +97,27 @@ def list_demos():
 
 
 @app.get("/api/demo/{demo_id}")
-def run_demo(demo_id: str):
+def run_demo(demo_id: str, session_id: SessionId):
     raw = DEMO_CASES.get(demo_id)
     if not raw:
         return JSONResponse(status_code=404, content={"error": "unknown_demo", "demo_ids": DEMO_IDS})
     case = build_case(raw, mode="demo")
-    db.save_case(case)
+    db.save_case(case, str(session_id))
     return case
 
 
 # --------------------------------------------------------------------- cases
 @app.get("/api/case/{case_id}")
-def get_case(case_id: str):
-    case = db.get_case(case_id)
+def get_case(case_id: str, session_id: SessionId):
+    case = db.get_case(case_id, str(session_id))
     if not case:
         return JSONResponse(status_code=404, content={"error": "case_not_found"})
     return case
 
 
 @app.get("/api/cases")
-def recent_cases():
-    return db.list_cases()
+def recent_cases(session_id: SessionId):
+    return db.list_cases(str(session_id))
 
 
 # ------------------------------------------------------------ live analysis
@@ -145,61 +147,61 @@ async def read_refs(references: Optional[List[UploadFile]], reference_text: str)
     return live.read_refs(raw, reference_text)
 
 
-def finish(case):
-    db.save_case(case)
+def finish(case, session_id: UUID):
+    db.save_case(case, str(session_id))
     return case
 
 
 @app.post("/api/analyze/text")
-async def analyze_text(text: str = Form(""), reference_text: str = Form(""),
+async def analyze_text(session_id: SessionId, text: str = Form(""), reference_text: str = Form(""),
                        references: Optional[List[UploadFile]] = File(None)):
     """Text claim to verify. Optional reference documents/pasted text are used as extra evidence."""
     try:
         refs, warns = await read_refs(references, reference_text)
-        return finish(live.analyze_text(text, refs, warns))
+        return finish(live.analyze_text(text, refs, warns), session_id)
     except Exception as e:  # noqa: BLE001
         return live_error(e)
 
 
 @app.post("/api/analyze/document")
-async def analyze_document(file: UploadFile = File(...), reference_text: str = Form(""),
+async def analyze_document(session_id: SessionId, file: UploadFile = File(...), reference_text: str = Form(""),
                            references: Optional[List[UploadFile]] = File(None)):
     """A .txt/.md/.pdf/.docx whose claims are verified."""
     try:
         refs, warns = await read_refs(references, reference_text)
-        return finish(live.analyze_document(file.filename or "document", await read_upload(file), refs, warns))
+        return finish(live.analyze_document(file.filename or "document", await read_upload(file), refs, warns), session_id)
     except Exception as e:  # noqa: BLE001
         return live_error(e)
 
 
 @app.post("/api/analyze/image")
-async def analyze_image(file: UploadFile = File(...), caption: str = Form(""), reference_text: str = Form(""),
+async def analyze_image(session_id: SessionId, file: UploadFile = File(...), caption: str = Form(""), reference_text: str = Form(""),
                         references: Optional[List[UploadFile]] = File(None)):
     try:
         refs, warns = await read_refs(references, reference_text)
         return finish(live.analyze_image(await read_upload(file), file.filename or "image", file.content_type or "image/jpeg",
-                                         caption, refs, warns))
+                                         caption, refs, warns), session_id)
     except Exception as e:  # noqa: BLE001
         return live_error(e)
 
 
 @app.post("/api/analyze/audio")
-async def analyze_audio(file: UploadFile = File(...), transcript: str = Form(""), reference_text: str = Form(""),
+async def analyze_audio(session_id: SessionId, file: UploadFile = File(...), transcript: str = Form(""), reference_text: str = Form(""),
                         references: Optional[List[UploadFile]] = File(None)):
     try:
         refs, warns = await read_refs(references, reference_text)
         return finish(live.analyze_audio(await read_upload(file), file.filename or "audio", file.content_type or "audio/mpeg",
-                                         transcript, refs, warns))
+                                         transcript, refs, warns), session_id)
     except Exception as e:  # noqa: BLE001
         return live_error(e)
 
 
 @app.post("/api/analyze/video")
-async def analyze_video(file: UploadFile = File(...), transcript: str = Form(""), reference_text: str = Form(""),
+async def analyze_video(session_id: SessionId, file: UploadFile = File(...), transcript: str = Form(""), reference_text: str = Form(""),
                         references: Optional[List[UploadFile]] = File(None)):
     try:
         refs, warns = await read_refs(references, reference_text)
-        return finish(live.analyze_video(await read_upload(file), file.filename or "video.mp4", transcript, refs, warns))
+        return finish(live.analyze_video(await read_upload(file), file.filename or "video.mp4", transcript, refs, warns), session_id)
     except Exception as e:  # noqa: BLE001
         return live_error(e)
 
@@ -226,7 +228,7 @@ def classify_evidence(req: ClassifyEvidenceRequest):
 
 # ---------------------------------------------- scoring (works right now)
 @app.post("/api/calculate-trust")
-def calculate_trust(req: CalculateTrustRequest):
+def calculate_trust(req: CalculateTrustRequest, session_id: SessionId):
     """Run the REAL scoring engine on evidence you supply yourself."""
     raw = {
         "input": {"type": req.input_type, "title": "Manual scoring request", "text": req.input_text,
@@ -242,5 +244,5 @@ def calculate_trust(req: CalculateTrustRequest):
             e["id"] = e["id"] or f"{d['id']}e{j}"
         raw["claims"].append(d)
     case = build_case(raw, mode="manual")
-    db.save_case(case)
+    db.save_case(case, str(session_id))
     return case

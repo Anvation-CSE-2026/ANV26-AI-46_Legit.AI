@@ -1,8 +1,9 @@
-import { Activity, AudioLines, Compass, FileText, Image as ImageIcon, Video } from 'lucide-react'
+import { Activity, AudioLines, Compass, FileText, History, Image as ImageIcon, Video } from 'lucide-react'
 import BrandLogo from './BrandLogo.jsx'
 
 const NAV_ITEMS = [
   { href: '/explore', label: 'Explore', Icon: Compass },
+  { href: '/history', label: 'History', Icon: History },
   { href: '/text', label: 'Text', Icon: FileText },
   { href: '/images', label: 'Images', Icon: ImageIcon },
   { href: '/video', label: 'Video', Icon: Video },

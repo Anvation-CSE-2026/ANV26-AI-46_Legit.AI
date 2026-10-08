@@ -15,35 +15,46 @@ def init_db() -> None:
     with _conn() as c:
         c.execute("""CREATE TABLE IF NOT EXISTS cases (
             case_id TEXT PRIMARY KEY, mode TEXT, input_type TEXT,
-            decision TEXT, created_at TEXT, payload TEXT NOT NULL)""")
+            decision TEXT, created_at TEXT, payload TEXT NOT NULL,
+            session_id TEXT)""")
+        c.execute("ALTER TABLE cases ADD COLUMN IF NOT EXISTS session_id TEXT")
+        c.execute(
+            "CREATE INDEX IF NOT EXISTS cases_session_created_idx "
+            "ON cases (session_id, created_at DESC)"
+        )
 
 
-def save_case(case: Dict) -> None:
+def save_case(case: Dict, session_id: str) -> None:
     with _conn() as c:
         c.execute(
-            """INSERT INTO cases (case_id, mode, input_type, decision, created_at, payload)
-               VALUES (%s, %s, %s, %s, %s, %s)
+            """INSERT INTO cases (case_id, mode, input_type, decision, created_at, payload, session_id)
+               VALUES (%s, %s, %s, %s, %s, %s, %s)
                ON CONFLICT (case_id) DO UPDATE SET
                  mode = EXCLUDED.mode,
                  input_type = EXCLUDED.input_type,
                  decision = EXCLUDED.decision,
                  created_at = EXCLUDED.created_at,
-                 payload = EXCLUDED.payload""",
+                 payload = EXCLUDED.payload
+               WHERE cases.session_id = EXCLUDED.session_id""",
             (case["case_id"], case["mode"], case["input"]["type"],
-             case["overall"]["decision"], case["created_at"], json.dumps(case)),
+             case["overall"]["decision"], case["created_at"], json.dumps(case), session_id),
         )
 
 
-def get_case(case_id: str) -> Optional[Dict]:
+def get_case(case_id: str, session_id: str) -> Optional[Dict]:
     with _conn() as c:
-        row = c.execute("SELECT payload FROM cases WHERE case_id = %s", (case_id,)).fetchone()
+        row = c.execute(
+            "SELECT payload FROM cases WHERE case_id = %s AND session_id = %s",
+            (case_id, session_id),
+        ).fetchone()
     return json.loads(row["payload"]) if row else None
 
 
-def list_cases(limit: int = 20) -> List[Dict]:
+def list_cases(session_id: str) -> List[Dict]:
     with _conn() as c:
         rows = c.execute(
             "SELECT case_id, mode, input_type, decision, created_at FROM cases "
-            "ORDER BY created_at DESC LIMIT %s", (limit,)
+            "WHERE session_id = %s ORDER BY created_at DESC",
+            (session_id,),
         ).fetchall()
     return list(rows)

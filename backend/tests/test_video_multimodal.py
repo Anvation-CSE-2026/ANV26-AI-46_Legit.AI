@@ -1,5 +1,6 @@
 """The video pipeline combines audio transcription, OCR, and visual frame analysis."""
 from types import SimpleNamespace
+from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
@@ -11,7 +12,7 @@ from services import media_processor as media
 from services import ocr_service
 from services import tavily_service as tav
 
-client = TestClient(app)
+client = TestClient(app, headers={"X-Session-ID": str(uuid4())})
 
 
 def test_default_video_sampling_covers_each_second(monkeypatch):

@@ -1,6 +1,7 @@
 """Audio/video tests using real FFmpeg + OpenCV on tiny generated clips. Gemini/Tavily are faked."""
 import io
 import subprocess
+from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -12,7 +13,7 @@ from services import media_processor as mp
 from services import tavily_service as tav
 
 pytestmark = pytest.mark.skipif(not mp.ffmpeg_available(), reason="ffmpeg not installed")
-client = TestClient(app)
+client = TestClient(app, headers={"X-Session-ID": str(uuid4())})
 SPEECH = "The Greenfield Metro Phase 2 line opened to passengers on fifteenth March."
 
 

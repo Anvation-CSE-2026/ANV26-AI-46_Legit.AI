@@ -90,6 +90,13 @@ check `/api/health` on the deployed site.
 
 Click a demo card at the top of the page.
 
+Analyses are saved to the History page for the current browser tab session.
+History is scoped by a random session ID kept in `sessionStorage`; opening a
+new browser session starts a separate history. This is session isolation, not
+account-based authentication. Clearing the tab's session storage starts a new
+history. Records created before session-scoped history was added have no known
+owner and are not assigned to any browser session.
+
 | Demo | Input | Expected result |
 |------|-------|-----------------|
 | 1 Genuine | text | Score ~95, **TRUSTED**, confidence ~92% (High), all sources support |
