@@ -16,6 +16,15 @@ def test_health():
     assert client.get("/api/health").json()["status"] == "ok"
 
 
+def test_health_without_api_prefix():
+    assert client.get("/health").json()["status"] == "ok"
+
+
+def test_api_docs_remain_available_locally():
+    assert client.get("/docs").status_code == 200
+    assert client.get("/openapi.json").status_code == 200
+
+
 def test_demo1_genuine_is_trusted():
     o = get("demo1")["overall"]
     assert o["decision"] == "TRUSTED"

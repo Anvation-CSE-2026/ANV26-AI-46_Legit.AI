@@ -26,6 +26,19 @@ from services import fallback_search, gemini_service, live_pipeline as live, med
 from services.pipeline import build_case  # noqa: E402
 
 app = FastAPI(title="TrustLens AI", version="0.2.0")
+
+
+@app.middleware("http")
+async def ensure_api_prefix(request, call_next):
+    path = request.scope["path"]
+    docs_paths = ("/docs", "/redoc")
+    is_docs_path = any(path == docs_path or path.startswith(f"{docs_path}/") for docs_path in docs_paths)
+    if path != "/" and path != "/openapi.json" and not is_docs_path:
+        if path != "/api" and not path.startswith("/api/"):
+            request.scope["path"] = f"/api{path}"
+    return await call_next(request)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[os.getenv("FRONTEND_ORIGIN", "http://localhost:5173"), "http://127.0.0.1:5173"],
