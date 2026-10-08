@@ -80,11 +80,12 @@ Open http://localhost:5173
 ## Deploy to Vercel
 
 The Vercel project uses the Services framework preset and the repository's
-`vercel.json` configuration. The backend accepts API paths both with and
-without the `/api` prefix so requests work whether the service router preserves
-or strips that prefix. Configure `DATABASE_URL`, `GEMINI_API_KEY`, and
-`TAVILY_API_KEY` in the Vercel project's Environment Variables. After deployment,
-check `/api/health` on the deployed site.
+`vercel.json` configuration. The frontend service includes an SPA fallback so
+deep links such as `/explore` and `/history` load the client-side app. The backend
+accepts API paths both with and without the `/api` prefix so requests work
+whether the service router preserves or strips that prefix. Configure
+`DATABASE_URL`, `GEMINI_API_KEY`, and `TAVILY_API_KEY` in the Vercel project's
+Environment Variables. After deployment, check `/api/health`.
 
 ## Test the three demos
 
