@@ -128,7 +128,7 @@ export default function Dashboard() {
             ? <Explore onNavigate={navigate} />
             : page === 'history'
               ? <History cases={cases} loading={historyLoading} openingCaseId={openingCaseId} onOpen={handleOpenCase} onNavigate={navigate} />
-              : <InputPanel pageType={page} loading={loading} onAnalyze={handleAnalyze} />}
+              : <InputPanel key={page} pageType={page} loading={loading} onAnalyze={handleAnalyze} />}
 
         {message && (
           <div role="alert" className={`notice ${message.kind === 'error' ? 'notice-error' : 'notice-info'}`}>
