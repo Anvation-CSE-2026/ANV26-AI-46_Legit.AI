@@ -11,7 +11,7 @@ export default function Conclusion({ conclusion }) {
       </ul>
       <div className="mt-5 rounded-md bg-paper p-4 text-sm text-ink-soft">
         <div className="mb-1 font-semibold text-ink">Limits of this result</div>
-        <ul className="list-disc space-y-1 pl-5">{conclusion.caveats.map((c, i) => <li key={i}>{c}</li>)}</ul>
+        <ul className="list-disc space-y-1 pl-5">{conclusion.caveats.map((c, i) => <li key={i}>{c.replaceAll('TrustLens', 'Legit.AI')}</li>)}</ul>
       </div>
     </Card>
   )
