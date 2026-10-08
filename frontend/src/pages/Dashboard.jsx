@@ -40,6 +40,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState(null)
   const resultsRef = useRef(null)
+  const navigationVersion = useRef(0)
 
   useEffect(() => {
     getHealth().then(setHealth).catch(() => setHealth({ status: 'down' }))
@@ -48,9 +49,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     const handlePopState = () => {
+      navigationVersion.current += 1
       setPage(pageFromPath(window.location.pathname))
       setResult(null)
       setActiveDemo(null)
+      setLoading(false)
+      setOpeningCaseId(null)
     }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
@@ -71,56 +75,69 @@ export default function Dashboard() {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
     event.preventDefault()
     if (window.location.pathname !== path) window.history.pushState(null, '', path)
+    navigationVersion.current += 1
     setPage(pageFromPath(path))
     setResult(null)
     setActiveDemo(null)
+    setLoading(false)
+    setOpeningCaseId(null)
     setMessage(null)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const showResult = (data) => {
+  const showResult = (data, requestNavigationVersion) => {
+    if (navigationVersion.current !== requestNavigationVersion) return
     setResult(data)
     getCases().then(setCases).catch((e) => setMessage({ kind: 'error', text: e.message }))
     window.setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
   }
 
   const handleOpenCase = async (caseId) => {
+    const requestNavigationVersion = navigationVersion.current
     setOpeningCaseId(caseId)
     setMessage(null)
     try {
-      showResult(await getCase(caseId))
+      showResult(await getCase(caseId), requestNavigationVersion)
     } catch (e) {
-      setMessage({ kind: 'error', text: e.message })
+      if (navigationVersion.current === requestNavigationVersion) {
+        setMessage({ kind: 'error', text: e.message })
+      }
     } finally {
-      setOpeningCaseId(null)
+      if (navigationVersion.current === requestNavigationVersion) setOpeningCaseId(null)
     }
   }
 
   const handleDemo = async (id) => {
+    const requestNavigationVersion = navigationVersion.current
     setLoading(true)
     setMessage(null)
     setActiveDemo(id)
     try {
-      showResult(await runDemo(id))
+      showResult(await runDemo(id), requestNavigationVersion)
     } catch (e) {
-      setMessage({ kind: 'error', text: e.message })
+      if (navigationVersion.current === requestNavigationVersion) {
+        setMessage({ kind: 'error', text: e.message })
+      }
     } finally {
-      setLoading(false)
+      if (navigationVersion.current === requestNavigationVersion) setLoading(false)
     }
   }
 
   const handleAnalyze = async (kind, opts) => {
+    const requestNavigationVersion = navigationVersion.current
     setLoading(true)
     setMessage(null)
     setActiveDemo(null)
     const endpoint = kind === 'text' && opts.file ? 'document' : kind
     try {
-      showResult(await analyze(endpoint, opts))
+      showResult(await analyze(endpoint, opts), requestNavigationVersion)
     } catch (e) {
-      const demoHint = e.body?.demo_available ? ' You can still run one of the sample checks from the home page.' : ''
-      setMessage({ kind: e.status >= 500 || e.status === 0 ? 'error' : 'info', text: e.message + demoHint })
+      if (navigationVersion.current === requestNavigationVersion) {
+        const demoHint = e.body?.demo_available ? ' You can still run one of the sample checks from the home page.' : ''
+        setMessage({ kind: e.status >= 500 || e.status === 0 ? 'error' : 'info', text: e.message + demoHint })
+      }
     } finally {
-      setLoading(false)
+      if (navigationVersion.current === requestNavigationVersion) setLoading(false)
     }
   }
 
