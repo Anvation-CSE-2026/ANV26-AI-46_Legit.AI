@@ -1,5 +1,7 @@
 # Legit.AI - Multimodal Digital Trust & Evidence Verification
 
+**Live Demo** : https://legitai-ashy.vercel.app/
+
 **Phase 2-4 added: live analysis. Evidence now comes from what the user submits, not from fixtures.**
 
 How a live case works:
